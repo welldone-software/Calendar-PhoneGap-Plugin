@@ -238,10 +238,13 @@
     return matchingEvents;
 }
 
--(EKCalendar*)findEKCalendar: (NSString *)calendarName {
+-(EKCalendar*)findEKCalendar: (NSString *)calendarName orId:(NSString*)identifier {
     for (EKCalendar *thisCalendar in self.eventStore.calendars){
         NSLog(@"Calendar: %@", thisCalendar.title);
         if ([thisCalendar.title isEqualToString:calendarName]) {
+            return thisCalendar;
+        }
+        if ([thisCalendar.calendarIdentifier isEqualToString:identifier]) {
             return thisCalendar;
         }
     }
@@ -332,10 +335,11 @@
     [self writeJavascript:[result toSuccessCallbackString:callbackId]];
 }
 
-- (void)createEventInNamedCalendar:(CDVInvokedUrlCommand*)command {
+- (void)createEventInCalendar:(CDVInvokedUrlCommand*)command {
     NSDictionary* options = [command.arguments objectAtIndex:0];
     NSString* calendarName = [options objectForKey:@"calendarName"];
-    EKCalendar* calendar = [self findEKCalendar:calendarName];
+    NSString* calendarId = [options objectForKey:@"calendarId"];
+    EKCalendar* calendar = [self findEKCalendar:calendarName orId:calendarId];
     if (calendar == nil) {
         CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Could not find calendar"];
         [self writeJavascript:[result toErrorCallbackString:command.callbackId]];
@@ -393,7 +397,7 @@
             return;
         }
     } else {
-        calendar = [self findEKCalendar:calendarName];
+        calendar = [self findEKCalendar:calendarName orId:nil];
         if (calendar == nil) {
             CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Could not find calendar"];
             [self writeJavascript:[result toErrorCallbackString:command.callbackId]];
@@ -444,10 +448,11 @@
     [self writeJavascript:[result toErrorCallbackString:callbackId]];
 }
 
--(void)deleteEventFromNamedCalendar:(CDVInvokedUrlCommand*)command {
+-(void)deleteEventFromCalendar:(CDVInvokedUrlCommand*)command {
     NSDictionary* options = [command.arguments objectAtIndex:0];
     NSString* calendarName = [options objectForKey:@"calendarName"];
-    EKCalendar* calendar = [self findEKCalendar:calendarName];
+    NSString* calendarId = [options objectForKey:@"calendarId"];
+    EKCalendar* calendar = [self findEKCalendar:calendarName orId:calendarId];
     if (calendar == nil) {
         NSString *callbackId = command.callbackId;
         CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Could not find calendar"];
@@ -469,10 +474,11 @@
 }
 
 
--(void)modifyEventInNamedCalendar:(CDVInvokedUrlCommand*)command {
+-(void)modifyEventInCalendar:(CDVInvokedUrlCommand*)command {
     NSDictionary* options = [command.arguments objectAtIndex:0];
     NSString* calendarName = [options objectForKey:@"calendarName"];
-    EKCalendar* calendar = [self findEKCalendar:calendarName];
+    NSString* calendarId = [options objectForKey:@"calendarId"];
+    EKCalendar* calendar = [self findEKCalendar:calendarName orId:calendarId];
     if (calendar == nil) {
         NSString *callbackId = command.callbackId;
         CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Could not find calendar"];
@@ -494,11 +500,12 @@
 }
 
 
--(void)findAllEventsInNamedCalendar:(CDVInvokedUrlCommand*)command {
+-(void)findAllEventsInCalendar:(CDVInvokedUrlCommand*)command {
     NSString *callbackId = command.callbackId;
     NSDictionary* options = [command.arguments objectAtIndex:0];
     NSString* calendarName = [options objectForKey:@"calendarName"];
-    EKCalendar* calendar = [self findEKCalendar:calendarName];
+    NSString* calendarId = [options objectForKey:@"calendarId"];
+    EKCalendar* calendar = [self findEKCalendar:calendarName orId:calendarId];
     if (calendar == nil) {
         NSString *callbackId = command.callbackId;
         CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Could not find calendar"];
@@ -551,7 +558,7 @@
     NSString* calendarName = [options objectForKey:@"calendarName"];
     NSString* hexColor = [options objectForKey:@"calendarColor"];
     
-    EKCalendar *cal = [self findEKCalendar:calendarName];
+    EKCalendar *cal = [self findEKCalendar:calendarName orId:nil];
     if (cal == nil) {
         cal = [EKCalendar calendarWithEventStore:self.eventStore];
         cal.title = calendarName;
@@ -594,21 +601,21 @@
     NSString *callbackId = command.callbackId;
     NSDictionary* options = [command.arguments objectAtIndex:0];
     NSString* calendarName = [options objectForKey:@"calendarName"];
+    NSString* calendarId = [options objectForKey:@"calendarId"];
     
-    EKCalendar *thisCalendar = [self findEKCalendar:calendarName];
-    
-    if (thisCalendar == nil) {
+    EKCalendar* calendar = [self findEKCalendar:calendarName orId:calendarId];
+    if (calendar == nil) {
         CDVPluginResult * pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_NO_RESULT];
         [self writeJavascript:[pluginResult toErrorCallbackString:callbackId]];
     } else {
         NSError *error;
-        [eventStore removeCalendar:thisCalendar commit:YES error:&error];
+        [eventStore removeCalendar:calendar commit:YES error:&error];
         if (error) {
             NSLog(@"Error in deleteCalendar: %@", error.localizedDescription);
             CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error.userInfo.description];
             [self writeJavascript:[result toErrorCallbackString:callbackId]];
         } else {
-            NSLog(@"Deleted calendar: %@", thisCalendar.title);
+            NSLog(@"Deleted calendar: %@", calendar.title);
             CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
             [self writeJavascript:[result toSuccessCallbackString:callbackId]];
         }
